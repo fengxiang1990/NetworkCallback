@@ -4,6 +4,13 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
+import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorListener;
+import android.hardware.SensorManager;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
@@ -85,11 +92,91 @@ public class MainActivity extends AppCompatActivity {
         }
     });
 
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 判断当前横竖屏状态
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            // 当前为横屏
+            Log.e("fxa","横屏");
+
+        } else if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT) {
+            // 当前为竖屏
+            Log.e("fxa","竖屏");
+        }
+    }
+
+    private SensorManager sensorManager = null;
+
     ConnectivityManager connectivityManager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+        Sensor sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        //需要系统旋转开关打开，锁定方向则无效
+//        OrientationDetector mOrientationDetector = new OrientationDetector(this);
+//        mOrientationDetector.enable();
+        sensorManager.registerListener(new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                if (event.sensor.getType() == Sensor.TYPE_ROTATION_VECTOR) {
+                    // 获取旋转矩阵
+                    float[] rotationMatrix = new float[9];
+                    SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+
+                    // 获取旋转角度
+                    float[] orientation = new float[3];
+                    SensorManager.getOrientation(rotationMatrix, orientation);
+
+                    // 计算x轴的旋转角度（单位：弧度）
+
+                    float zRotationRadians = orientation[0];
+
+                    float xRotationRadians = orientation[1];
+
+                    float yRotationRadians = orientation[2];
+
+
+
+                    // 将弧度转换为角度（单位：度）
+                    float xRotationDegrees = (float) Math.toDegrees(xRotationRadians);
+                    float yRotationDegrees = (float) Math.toDegrees(yRotationRadians);
+                    float zRotationDegrees = (float) Math.toDegrees(zRotationRadians);
+                    // 打印x轴的旋转角度
+                    Log.d("MainActivity", "x轴旋转角度：" + xRotationDegrees+" y->"+yRotationDegrees+" z->"+zRotationDegrees);
+
+                    if((yRotationDegrees < - 45 && yRotationDegrees >-90) &&(xRotationDegrees < 45 && xRotationDegrees > -45)){
+                        Log.e("MainActivity","左");
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                    }else if ((yRotationDegrees > 45 && yRotationDegrees < 90) && (xRotationDegrees < 45 && xRotationDegrees > -45) ){
+                        Log.e("MainActivity","右");
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE);
+                    } else if(xRotationDegrees < -45 && xRotationDegrees >-90 ){
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                    }else if(xRotationDegrees > 45 && xRotationDegrees < 90){
+                        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT);
+                    }
+
+                }
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+            }
+        }, sensor, SensorManager.SENSOR_DELAY_NORMAL);
+
+
+
+
+
+
+
+
+
+
         connectivityManager  = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         connectivityManager.registerDefaultNetworkCallback(new ConnectivityManager.NetworkCallback(){
 
